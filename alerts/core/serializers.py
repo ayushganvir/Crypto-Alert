@@ -50,6 +50,17 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         fields = ['url', 'username', 'alerts']
 
 
+class UserAlertSerializer(serializers.Serializer):
+    created_by = serializers.CharField(required=True)
+    password = serializers.CharField(required=True)
+    coin_symbol = serializers.CharField()
+    buy_price = serializers.IntegerField()
+    alert_price = serializers.IntegerField()
+
+    def create(self, validated_data):
+        return CoinAlert.objects.create(**validated_data)
+
+
 class CoinAlertSerializer(serializers.ModelSerializer):
     user = serializers.ReadOnlyField(source='created_by.username')
     status = serializers.ReadOnlyField()

@@ -7,7 +7,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .permissions import IsOwnerOrReadOnly
-from .serializers import UserSerializer, UserRegistrationSerializer, UserLoginSerializer, UserChangePasswordSerializer
+from .serializers import UserSerializer, UserRegistrationSerializer, UserLoginSerializer, UserChangePasswordSerializer, \
+    UserAlertSerializer
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.parsers import JSONParser
@@ -70,7 +71,7 @@ class UserLoginView(APIView):
 
 class CurrentUser(APIView):
 
-    def post(self, request, format=None):
+    def get(self, request, format=None):
         return Response({'user': str(request.user)})
 
 
@@ -82,6 +83,27 @@ class UserChangePasswordView(APIView):
         serializer = UserChangePasswordSerializer(data=request.data, context={'user': request.user})
         serializer.is_valid(raise_exception=True)
         return Response({'msg': 'Password Changed Successfully'}, status=status.HTTP_200_OK)
+
+
+class UserAlertView(APIView):
+
+    def post(self, request, format=None):
+        serializer = UserAlertSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            username = serializer.data.get('username')
+            password = serializer.data.get('password')
+            user = authenticate(username=username, password=password)
+
+            if user is not None:
+                print(serializer.validated_data)
+                serializer.create(serializer.validated_data)
+                token = get_tokens_for_user(user)
+                return Response({'token': token, 'status': 'alert added'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'errors': {'non_field_errors': ['Email or Password is not Valid']}},
+                                status=status.HTTP_404_NOT_FOUND)
+            # return Response({'data': serializer.data})
+        return Response({'error': serializer.errors})
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -108,7 +130,7 @@ class AlertsView(APIView):
 
     def post(self, request, format=None):
         serializer = CoinAlertSerializer(data=request.data)
-        
+
 
 
 # class AlertDetail(generics.RetrieveAPIView):
