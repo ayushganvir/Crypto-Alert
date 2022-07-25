@@ -19,8 +19,10 @@ from rest_framework import mixins
 from rest_framework.reverse import reverse
 from rest_framework import renderers
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import authenticate
+import rest_framework_simplejwt.authentication as jwtauth
 
+from django.contrib.auth import authenticate
+from rest_framework.exceptions import AuthenticationFailed
 
 #
 # @api_view(['GET'])
@@ -37,20 +39,21 @@ def get_tokens_for_user(user):
         'access': str(refresh.access_token),
     }
 
-
+# Register Users @/register/
 class UserRegistrationView(APIView):
-    # renderer_classes = [UserRenderer]
 
     def post(self, request, format=None):
         serializer = UserRegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         token = get_tokens_for_user(user)
-        return Response({'token': token, 'msg': 'Registration Successful'}, status=status.HTTP_201_CREATED)
+        response = Response({'token': token, 'msg': 'Registration Successful'}, status=status.HTTP_201_CREATED, )
+        response.set_cookie(key='jwt', value=token, httponly=True)
 
+        return response
 
+# Check if user Exists
 class UserLoginView(APIView):
-    # renderer_classes = [UserRenderer]
 
     def post(self, request, format=None):
         serializer = UserLoginSerializer(data=request.data)
@@ -84,18 +87,20 @@ class UserChangePasswordView(APIView):
         serializer.is_valid(raise_exception=True)
         return Response({'msg': 'Password Changed Successfully'}, status=status.HTTP_200_OK)
 
-
+# User Alerts @/user_alerts/
 class UserAlertView(APIView):
 
     def post(self, request, format=None):
+        token = request.COOKIES.get('jwt')
+        user = jwtauth.JWTAuthentication().get_user(token)
         serializer = UserAlertSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            username = serializer.data.get('username')
-            password = serializer.data.get('password')
-            user = authenticate(username=username, password=password)
-
+            # username = serializer.data.get('created_by')
+            # password = serializer.data.get('password')
+            # user = authenticate(username=username, password=password)
+            # print(serializer.data)
             if user is not None:
-                print(serializer.validated_data)
+                print(user)
                 serializer.create(serializer.validated_data)
                 token = get_tokens_for_user(user)
                 return Response({'token': token, 'status': 'alert added'}, status=status.HTTP_200_OK)
@@ -104,6 +109,10 @@ class UserAlertView(APIView):
                                 status=status.HTTP_404_NOT_FOUND)
             # return Response({'data': serializer.data})
         return Response({'error': serializer.errors})
+
+    def get(self, request, format= None):
+        # serializer =
+        pass
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):

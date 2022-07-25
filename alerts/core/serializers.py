@@ -7,13 +7,15 @@ from core.models import CoinAlert
 from name_script import get_coin_names
 
 
-class UserRegistrationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['email', 'username', 'password']
-        extra_kwargs = {
-            'password': {'write_only': True}
-        }
+class UserRegistrationSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    email = serializers.EmailField()
+    password = serializers.CharField()
+
+    def create(self, validated_data):
+        return User.objects.create_user(username=validated_data['username'],
+                                        email=validated_data['email'],
+                                        password=validated_data['password'])
 
 
 class UserLoginSerializer(serializers.Serializer):
@@ -51,14 +53,19 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class UserAlertSerializer(serializers.Serializer):
-    created_by = serializers.CharField(required=True)
-    password = serializers.CharField(required=True)
+    # created_by = serializers.CharField(required=True)
+    # password = serializers.CharField(required=True)
     coin_symbol = serializers.CharField()
     buy_price = serializers.IntegerField()
     alert_price = serializers.IntegerField()
 
     def create(self, validated_data):
-        return CoinAlert.objects.create(**validated_data)
+        print(validated_data)
+        return CoinAlert.objects.create(created_by=User.objects.get(username = validated_data['created_by']),
+                                        coin_symbol=validated_data['coin_symbol'],
+                                        buy_price=validated_data['buy_price'],
+                                        alert_price=validated_data['alert_price']
+                                        )
 
 
 class CoinAlertSerializer(serializers.ModelSerializer):
